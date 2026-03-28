@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>D&D Dice Roller di Sithis</title>
+  <style>
+    :root {
+      --bg1:#0b1020;
+      --bg2:#131c31;
+      --bg3:#1d2944;
+      --panel:rgba(255,255,255,.08);
+      --line:rgba(255,255,255,.11);
+      --text:#f8fafc;
+      --muted:#cbd5e1;
+      --accent:#8b5cf6;
+      --accent2:#67e8f9;
+      --shadow:0 24px 70px rgba(0,0,0,.42);
+      --radius:24px;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(139,92,246,.14), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(103,232,249,.10), transparent 22%),
+        linear-gradient(160deg, var(--bg1), var(--bg2) 54%, var(--bg3));
+      display:flex;
+      justify-content:center;
+      padding:16px 12px 30px;
+    }
+    .shell { width:min(100%, 510px); }
+    .app {
+      border-radius:34px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border:1px solid var(--line);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow:var(--shadow);
+    }
+    .hero {
+      padding:22px 20px 16px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+      text-align:center;
+    }
+    h1 {
+      margin:0;
+      font-size:30px;
+      line-height:1.04;
+      letter-spacing:-.02em;
+    }
+    .subtitle {
+      margin:10px 0 0;
+      color:#e6eefb;
+      font-size:16px;
+      line-height:1.35;
+      font-weight:700;
+    }
+    .content { padding:14px; }
+    .panel {
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      margin-bottom:14px;
+    }
+    .label {
+      display:block;
+      margin-bottom:8px;
+      font-size:13px;
+      font-weight:800;
+      color:#e5edf8;
+    }
+    .grid2 {
+      display:grid;
+      grid-template-columns:1.3fr 1fr;
+      gap:10px;
+    }
+    .grid3 {
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    select, input, button { font:inherit; border:none; outline:none; }
+    .select, .input {
+      width:100%;
+      padding:14px;
+      border-radius:16px;
+      color:var(--text);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      appearance:none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .btn {
+      width:100%;
+      padding:14px;
+      border-radius:18px;
+      font-weight:900;
+      color:#082f49;
+      background:linear-gradient(135deg, #c4b5fd, #67e8f9);
+      box-shadow:0 12px 28px rgba(103,232,249,.18);
+    }
+    .btn.secondary {
+      color:var(--text);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.09);
+      box-shadow:none;
+    }
+    .chipRow {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .chip {
+      border:none;
+      padding:10px 12px;
+      border-radius:999px;
+      color:var(--text);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      font-weight:800;
+    }
+    .arena {
+      position:relative;
+      min-height:360px;
+      overflow:hidden;
+      border-radius:26px;
+      border:1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(circle at 50% 14%, rgba(165,196,255,.14), transparent 36%),
+        linear-gradient(180deg, rgba(24,38,72,.88), rgba(17,29,58,.96) 58%, rgba(22,36,66,.98));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -18px 34px rgba(0,0,0,.28);
+    }
+    .arena::before {
+      content:"";
+      position:absolute;
+      left:16px;
+      right:16px;
+      bottom:18px;
+      height:34px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(0,0,0,.58), transparent 68%);
+      filter:blur(12px);
+      pointer-events:none;
+    }
+    .scene {
+      position:absolute;
+      inset:0;
+    }
+    .die {
+      position:absolute;
+      width:86px;
+      height:86px;
+      left:0;
+      top:0;
+      transform-origin:center center;
+      user-select:none;
+      pointer-events:none;
+      filter:drop-shadow(0 16px 16px rgba(0,0,0,.34));
+    }
+    .die svg {
+      width:100%;
+      height:100%;
+      overflow:visible;
+    }
+    .valueText {
+      fill:#0b0f18;
+      font-weight:900;
+      text-anchor:middle;
+      dominant-baseline:middle;
+      paint-order:stroke;
+      stroke:rgba(255,255,255,.38);
+      stroke-width:1.2px;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    }
+    .result {
+      font-size:58px;
+      line-height:1;
+      font-weight:900;
+      margin:6px 0 8px;
+      letter-spacing:-.04em;
+    }
+    .formula {
+      color:#e9d5ff;
+      font-size:17px;
+      font-weight:800;
+    }
+    .details {
+      margin-top:8px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+    }
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:10px;
+      margin-top:12px;
+    }
+    .stat {
+      background:rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:12px;
+      text-align:center;
+    }
+    .stat strong {
+      display:block;
+      font-size:24px;
+      margin-bottom:4px;
+    }
+    .history {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      max-height:230px;
+      overflow:auto;
+      padding-right:4px;
+    }
+    .historyBtn {
+      border:none;
+      text-align:left;
+      padding:12px;
+      border-radius:18px;
+      color:var(--text);
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .historyTop {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      margin-bottom:6px;
+    }
+    .tiny { font-size:12px; color:#cbd5e1; }
+    .footerNote {
+      text-align:center;
+      color:#94a3b8;
+      font-size:12px;
+      padding:4px 8px 0;
+    }
+    @media (max-width:430px) {
+      .grid2, .grid3, .stats { grid-template-columns:1fr 1fr; }
+      .result { font-size:50px; }
+      .die { width:76px; height:76px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="app">
+      <div class="hero">
+        <h1>D&amp;D Dice Roller di Sithis</h1>
+        <p class="subtitle">Tira la tua sorte ⚔️</p>
+      </div>
+      <div class="content">
+        <div class="panel">
+          <div class="label">Selezione tiro</div>
+          <div class="grid2">
+            <div>
+              <label class="label" for="dieType">Tipo di dado</label>
+              <select id="dieType" class="select">
+                <option value="4">d4</option>
+                <option value="6">d6</option>
+                <option value="8">d8</option>
+                <option value="10">d10</option>
+                <option value="12">d12</option>
+                <option value="20" selected>d20</option>
+                <option value="100">d100</option>
+                <option value="2">d2</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" for="quantity">Quantità</label>
+              <select id="quantity" class="select"></select>
+            </div>
+          </div>
+          <div class="grid3">
+            <div>
+              <label class="label" for="modifier">Modificatore</label>
+              <input id="modifier" class="input" type="number" min="-100" max="100" value="0" />
+            </div>
+            <div>
+              <label class="label" for="preset">Preset</label>
+              <select id="preset" class="select">
+                <option value="custom">Custom</option>
+                <option value="1d20">1d20</option>
+                <option value="2d6+3">2d6+3</option>
+                <option value="4d6kh3">4d6kh3</option>
+                <option value="adv">1d20 vantaggio</option>
+                <option value="dis">1d20 svantaggio</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Azioni</label>
+              <button class="btn" id="rollBtn">Lancia</button>
+            </div>
+          </div>
+          <div class="chipRow">
+            <button class="chip" id="prepareBtn">Prepara scena</button>
+            <button class="chip" id="soundBtn">Audio: attivo</button>
+            <button class="chip" id="shakeBtn">Shake: off</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="label">Scena di lancio</div>
+          <div class="arena" id="arena">
+            <div class="scene" id="scene"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="tiny">Ultimo risultato</div>
+          <div class="result" id="total">-</div>
+          <div class="formula" id="formula">Nessun tiro ancora</div>
+          <div class="details" id="details">Il totale, i singoli dadi e il modificatore appariranno qui dopo l’atterraggio.</div>
+          <div class="stats">
+            <div class="stat"><strong id="highest">-</strong><span class="tiny">Più alto</span></div>
+            <div class="stat"><strong id="lowest">-</strong><span class="tiny">Più basso</span></div>
+            <div class="stat"><strong id="mode">Normale</strong><span class="tiny">Modalità</span></div>
+            <div class="stat"><strong id="pool">-</strong><span class="tiny">Pool</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="label">Cronologia</div>
+          <div class="history" id="history"></div>
+        </div>
+
+        <div class="footerNote">Audio migliorato e scena ripulita per il tiro corrente.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const scene = document.getElementById('scene');
+    const arena = document.getElementById('arena');
+    const dieType = document.getElementById('dieType');
+    const quantity = document.getElementById('quantity');
+    const modifier = document.getElementById('modifier');
+    const preset = document.getElementById('preset');
+    const rollBtn = document.getElementById('rollBtn');
+    const prepareBtn = document.getElementById('prepareBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const shakeBtn = document.getElementById('shakeBtn');
+    const totalEl = document.getElementById('total');
+    const formulaEl = document.getElementById('formula');
+    const detailsEl = document.getElementById('details');
+    const highestEl = document.getElementById('highest');
+    const lowestEl = document.getElementById('lowest');
+    const modeEl = document.getElementById('mode');
+    const poolEl = document.getElementById('pool');
+    const historyEl = document.getElementById('history');
+
+    for (let i = 1; i <= 12; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i;
+      if (i === 1) opt.selected = true;
+      quantity.appendChild(opt);
+    }
+
+    let dice = [];
+    let animationId = null;
+    let pendingResult = false;
+    let settleFrames = 0;
+    let history = [];
+    let soundEnabled = true;
+    let shakeEnabled = false;
+    let lastShake = 0;
+    let audioCtx = null;
+    let noiseBuffer = null;
+    let lastClack = 0;
+
+    function formatMod(v) { return !v ? '' : (v > 0 ? `+${v}` : `${v}`); }
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function randomInt(max) { return Math.floor(Math.random() * max) + 1; }
+    function vibrate() { if (navigator.vibrate) navigator.vibrate([18, 28, 18]); }
+
+    async function ensureAudio() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+          noiseBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.35), audioCtx.sampleRate);
+          const data = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < data.length; i++) {
+            const t = i / data.length;
+            data[i] = (Math.random() * 2 - 1) * (1 - t * 0.35);
+          }
+        }
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+      } catch (e) {}
+    }
+
+    function playDiceClack(intensity = 0.7) {
+      if (!soundEnabled || !audioCtx || !noiseBuffer || audioCtx.state !== 'running') return;
+      const stamp = performance.now();
+      if (stamp - lastClack < 24) return;
+      lastClack = stamp;
+
+      const now = audioCtx.currentTime;
+      const layerCount = intensity > 0.72 ? 3 : 2;
+      for (let n = 0; n < layerCount; n++) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = noiseBuffer;
+        const band = audioCtx.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = 1200 + Math.random() * 2600;
+        band.Q.value = 0.85 + Math.random() * 1.8;
+        const high = audioCtx.createBiquadFilter();
+        high.type = 'highpass';
+        high.frequency.value = 350 + Math.random() * 500;
+        const gain = audioCtx.createGain();
+        const start = now + n * 0.012;
+        const peak = (0.07 + Math.random() * 0.04) * intensity;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(peak, start + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.055 + Math.random() * 0.025);
+        src.connect(band).connect(high).connect(gain).connect(audioCtx.destination);
+        src.start(start);
+        src.stop(start + 0.08);
+      }
+
+      const thump = audioCtx.createOscillator();
+      const thumpGain = audioCtx.createGain();
+      thump.type = 'triangle';
+      thump.frequency.setValueAtTime(160 + Math.random() * 80, now);
+      thump.frequency.exponentialRampToValueAtTime(58, now + 0.05);
+      thumpGain.gain.setValueAtTime(0.0001, now);
+      thumpGain.gain.exponentialRampToValueAtTime(0.04 * intensity, now + 0.004);
+      thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+      thump.connect(thumpGain).connect(audioCtx.destination);
+      thump.start(now);
+      thump.stop(now + 0.065);
+    }
+
+    function glyphForValue(sides, value) {
+      if (sides === 2) return value === 1 ? 'H' : 'T';
+      if (sides === 100) return String(value).padStart(2, '0');
+      return String(value);
+    }
+
+    function dieSVG(sides, text = '?') {
+      const stroke = '#aeb9c8';
+      const white1 = '#ffffff';
+      const white2 = '#eef2f7';
+      const white3 = '#dde4ee';
+      const labelSize = sides >= 20 ? 16 : sides >= 10 ? 18 : 20;
+      if (sides === 6) {
+        return `<svg viewBox="0 0 82 82"><defs><linearGradient id="cubeTop" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="${white1}"/><stop offset="100%" stop-color="${white2}"/></linearGradient><linearGradient id="cubeFront" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="${white2}"/><stop offset="100%" stop-color="${white3}"/></linearGradient></defs><polygon points="20,18 50,18 63,29 33,29" fill="url(#cubeTop)" stroke="${stroke}" stroke-width="1.3"/><polygon points="20,18 20,50 33,61 33,29" fill="${white3}" stroke="${stroke}" stroke-width="1.3"/><polygon points="33,29 63,29 63,61 33,61" fill="url(#cubeFront)" stroke="${stroke}" stroke-width="1.3"/><text x="48" y="46" class="valueText" font-size="${labelSize}">${text}</text></svg>`;
+      }
+      if (sides === 4) {
+        return `<svg viewBox="0 0 82 82"><polygon points="41,10 63,58 19,58" fill="${white2}" stroke="${stroke}" stroke-width="1.3"/><polygon points="41,10 54,36 41,58" fill="${white3}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,10 28,36 41,58" fill="${white1}" stroke="${stroke}" stroke-width="1.1"/><text x="41" y="42" class="valueText" font-size="18">${text}</text></svg>`;
+      }
+      if (sides === 8) {
+        return `<svg viewBox="0 0 82 82"><polygon points="41,8 66,30 41,74 16,30" fill="${white2}" stroke="${stroke}" stroke-width="1.3"/><polygon points="41,8 66,30 41,42" fill="${white1}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,42 66,30 41,74" fill="${white3}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,42 16,30 41,74" fill="#f7f9fc" stroke="${stroke}" stroke-width="1.1"/><text x="41" y="42" class="valueText" font-size="18">${text}</text></svg>`;
+      }
+      if (sides === 10) {
+        return `<svg viewBox="0 0 82 82"><polygon points="41,8 63,23 58,61 24,61 19,23" fill="${white2}" stroke="${stroke}" stroke-width="1.3"/><polygon points="41,8 63,23 41,38" fill="${white1}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,38 63,23 58,61" fill="${white3}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,38 19,23 24,61" fill="#f7f9fc" stroke="${stroke}" stroke-width="1.1"/><text x="41" y="42" class="valueText" font-size="17">${text}</text></svg>`;
+      }
+      if (sides === 12) {
+        return `<svg viewBox="0 0 82 82"><polygon points="41,8 61,18 71,41 61,64 41,74 21,64 11,41 21,18" fill="${white2}" stroke="${stroke}" stroke-width="1.3"/><polygon points="41,8 61,18 41,34 21,18" fill="${white1}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,34 61,18 71,41 61,64 41,52" fill="${white3}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,34 21,18 11,41 21,64 41,52" fill="#f7f9fc" stroke="${stroke}" stroke-width="1.1"/><text x="41" y="42" class="valueText" font-size="17">${text}</text></svg>`;
+      }
+      if (sides === 20 || sides === 100) {
+        return `<svg viewBox="0 0 82 82"><polygon points="41,8 61,18 72,41 61,64 41,74 21,64 10,41 21,18" fill="${white2}" stroke="${stroke}" stroke-width="1.3"/><polygon points="41,8 61,18 41,33 21,18" fill="${white1}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,33 61,18 72,41 61,64 41,52" fill="${white3}" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,33 21,18 10,41 21,64 41,52" fill="#f7f9fc" stroke="${stroke}" stroke-width="1.1"/><polygon points="41,52 61,64 41,74 21,64" fill="#d7dee8" stroke="${stroke}" stroke-width="1.1"/><text x="41" y="42" class="valueText" font-size="${labelSize}">${text}</text></svg>`;
+      }
+      return `<svg viewBox="0 0 82 82"><ellipse cx="41" cy="41" rx="26" ry="26" fill="${white2}" stroke="${stroke}" stroke-width="1.6"/><ellipse cx="41" cy="41" rx="26" ry="26" fill="none" stroke="#c7d1de" stroke-width="4" opacity=".78"/><text x="41" y="42" class="valueText" font-size="18">${text}</text></svg>`;
+    }
+
+    function clearScene() {
+      scene.innerHTML = '';
+      dice = [];
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+
+    function createDieObject(sides, index, total) {
+      const el = document.createElement('div');
+      el.className = 'die';
+      el.innerHTML = dieSVG(sides, '?');
+      scene.appendChild(el);
+      const w = scene.clientWidth || arena.clientWidth;
+      const radius = sides === 6 ? 28 : sides === 2 ? 26 : 30;
+      const spread = Math.min(w - 90, total * 20);
+      const center = w / 2;
+      const startX = center - spread / 2 + (total > 1 ? (spread / (total - 1 || 1)) * index : 0);
+      return {
+        el, sides, r: radius,
+        x: clamp(startX, 42, w - 42),
+        y: 30 + Math.random() * 16,
+        vx: rand(-220, 220),
+        vy: rand(-30, 40),
+        rot: rand(-25, 25),
+        vr: rand(-480, 480),
+        value: null
+      };
+    }
+
+    function updatePoolLabel(label) {
+      const txt = label || `${quantity.value}d${dieType.value}${formatMod(parseInt(modifier.value || '0', 10))}`;
+      poolEl.textContent = txt;
+    }
+
+    function prepareScene() {
+      clearScene();
+      const sides = parseInt(dieType.value, 10);
+      const qty = parseInt(quantity.value, 10);
+      for (let i = 0; i < qty; i++) dice.push(createDieObject(sides, i, qty));
+      renderDice();
+      updatePoolLabel();
+    }
+
+    function renderDice() {
+      for (const d of dice) d.el.style.transform = `translate(${d.x - 43}px, ${d.y - 43}px) rotate(${d.rot}deg)`;
+    }
+
+    function applyPreset() {
+      const v = preset.value;
+      modeEl.textContent = 'Normale';
+      if (v === 'custom') return prepareScene();
+      if (v === '1d20') {
+        dieType.value = '20'; quantity.value = '1'; modifier.value = '0';
+      } else if (v === '2d6+3') {
+        dieType.value = '6'; quantity.value = '2'; modifier.value = '3';
+      } else if (v === '4d6kh3') {
+        dieType.value = '6'; quantity.value = '4'; modifier.value = '0'; modeEl.textContent = 'kh3';
+      } else if (v === 'adv') {
+        dieType.value = '20'; quantity.value = '2'; modifier.value = '0'; modeEl.textContent = 'Vantaggio';
+      } else if (v === 'dis') {
+        dieType.value = '20'; quantity.value = '2'; modifier.value = '0'; modeEl.textContent = 'Svantaggio';
+      }
+      prepareScene();
+    }
+
+    function finishRoll() {
+      const mode = modeEl.textContent;
+      const mod = parseInt(modifier.value || '0', 10);
+      const sides = parseInt(dieType.value, 10);
+      let rolls = dice.map(d => d.value ?? randomInt(sides));
+      let counted = [...rolls];
+      let total = 0;
+      let label = `${rolls.length}d${sides}`;
+      if (mode === 'kh3' && sides === 6 && rolls.length === 4) {
+        counted = [...rolls].sort((a,b)=>b-a).slice(0,3);
+        total = counted.reduce((a,b)=>a+b,0) + mod;
+        label = '4d6kh3';
+      } else if ((mode === 'Vantaggio' || mode === 'Svantaggio') && sides === 20 && rolls.length === 2) {
+        const chosen = mode === 'Vantaggio' ? Math.max(...rolls) : Math.min(...rolls);
+        counted = [chosen];
+        total = chosen + mod;
+        label = `1d20 ${mode.toLowerCase()}`;
+      } else {
+        total = rolls.reduce((a,b)=>a+b,0) + mod;
+      }
+      const formula = `${label}${formatMod(mod)}`;
+      totalEl.textContent = total;
+      formulaEl.textContent = formula;
+      detailsEl.textContent = `Tiri: [${rolls.join(', ')}]${counted.length !== rolls.length ? `, conteggiati: [${counted.join(', ')}]` : ''}${mod ? `, modificatore ${formatMod(mod)}` : ''}`;
+      highestEl.textContent = Math.max(...rolls);
+      lowestEl.textContent = Math.min(...rolls);
+      updatePoolLabel(formula);
+      history.unshift({ label: formula, details: detailsEl.textContent, total, time: new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) });
+      history = history.slice(0, 8);
+      historyEl.innerHTML = history.map(item => `<button class="historyBtn"><div class="historyTop"><div><strong>${item.label}</strong></div><div class="tiny">${item.time}</div></div><div class="tiny">${item.details}</div><div style="font-size:24px;font-weight:900;margin-top:8px;">${item.total}</div></button>`).join('');
+      vibrate();
+    }
+
+    function setFinalValues() {
+      for (const d of dice) {
+        d.value = d.sides === 100 ? Math.floor(Math.random() * 100) : randomInt(d.sides);
+        d.el.innerHTML = dieSVG(d.sides, glyphForValue(d.sides, d.value));
+      }
+    }
+
+    async function rollDice() {
+      await ensureAudio();
+      if (!dice.length) prepareScene();
+      for (const d of dice) {
+        d.value = null;
+        d.el.innerHTML = dieSVG(d.sides, '?');
+        d.x = clamp((scene.clientWidth || arena.clientWidth) / 2 + rand(-40, 40), 43, (scene.clientWidth || arena.clientWidth) - 43);
+        d.y = 24 + rand(-6, 10);
+        d.vx = rand(-320, 320) + (Math.random() > .5 ? 140 : -140);
+        d.vy = rand(20, 130);
+        d.rot = rand(-24, 24);
+        d.vr = rand(-820, 820);
+      }
+      pendingResult = true;
+      settleFrames = 0;
+      runPhysics();
+    }
+
+    function resolveCollisions() {
+      for (let i = 0; i < dice.length; i++) {
+        for (let j = i + 1; j < dice.length; j++) {
+          const a = dice[i], b = dice[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          const minDist = a.r + b.r - 4;
+          if (dist < minDist) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const overlap = minDist - dist;
+            a.x -= nx * overlap * 0.5;
+            a.y -= ny * overlap * 0.5;
+            b.x += nx * overlap * 0.5;
+            b.y += ny * overlap * 0.5;
+            const rvx = b.vx - a.vx;
+            const rvy = b.vy - a.vy;
+            const velAlongNormal = rvx * nx + rvy * ny;
+            if (velAlongNormal < 0) {
+              const restitution = 0.62;
+              const impulse = -(1 + restitution) * velAlongNormal / 2;
+              a.vx -= impulse * nx;
+              a.vy -= impulse * ny;
+              b.vx += impulse * nx;
+              b.vy += impulse * ny;
+              a.vr += rand(-120, 120);
+              b.vr += rand(-120, 120);
+              if (Math.abs(velAlongNormal) > 40) playDiceClack(clamp(Math.abs(velAlongNormal) / 220, 0.34, 1));
+            }
+          }
+        }
+      }
+    }
+
+    function runPhysics() {
+      if (animationId) cancelAnimationFrame(animationId);
+      let last = performance.now();
+      const gravity = 1650;
+      const restitutionFloor = 0.49;
+      const restitutionWall = 0.64;
+      const floorFriction = 0.985;
+      const airFriction = 0.998;
+
+      function frame(now) {
+        const dt = Math.min((now - last) / 1000, 0.024);
+        last = now;
+        const w = scene.clientWidth || arena.clientWidth;
+        const h = scene.clientHeight || arena.clientHeight;
+        let moving = false;
+
+        for (const d of dice) {
+          d.vy += gravity * dt;
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          d.rot += d.vr * dt;
+          d.vx *= airFriction;
+          d.vr *= 0.994;
+
+          if (d.x - d.r < 8) {
+            d.x = 8 + d.r;
+            d.vx = Math.abs(d.vx) * restitutionWall;
+            d.vr += rand(-90, 90);
+            if (Math.abs(d.vx) > 70) playDiceClack(clamp(Math.abs(d.vx) / 220, 0.24, 0.8));
+          }
+          if (d.x + d.r > w - 8) {
+            d.x = w - 8 - d.r;
+            d.vx = -Math.abs(d.vx) * restitutionWall;
+            d.vr += rand(-90, 90);
+            if (Math.abs(d.vx) > 70) playDiceClack(clamp(Math.abs(d.vx) / 220, 0.24, 0.8));
+          }
+          if (d.y + d.r > h - 18) {
+            d.y = h - 18 - d.r;
+            if (Math.abs(d.vy) > 36) {
+              d.vy = -Math.abs(d.vy) * restitutionFloor;
+              d.vx *= floorFriction;
+              d.vr *= 0.91;
+              playDiceClack(clamp(Math.abs(d.vy) / 300, 0.28, 1));
+            } else {
+              d.vy = 0;
+              d.vx *= 0.96;
+              d.vr *= 0.9;
+            }
+          }
+          moving = moving || Math.abs(d.vx) > 10 || Math.abs(d.vy) > 10 || Math.abs(d.vr) > 16;
+        }
+
+        resolveCollisions();
+        renderDice();
+
+        if (!moving) settleFrames += 1; else settleFrames = 0;
+        if (pendingResult && settleFrames > 18) {
+          pendingResult = false;
+          setFinalValues();
+          renderDice();
+          finishRoll();
+          animationId = null;
+          return;
+        }
+        animationId = requestAnimationFrame(frame);
+      }
+      animationId = requestAnimationFrame(frame);
+    }
+
+    async function toggleShake() {
+      if (shakeEnabled) {
+        shakeEnabled = false;
+        shakeBtn.textContent = 'Shake: off';
+        return;
+      }
+      try {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          const permission = await DeviceMotionEvent.requestPermission();
+          if (permission !== 'granted') return;
+        }
+        shakeEnabled = true;
+        shakeBtn.textContent = 'Shake: on';
+      } catch (e) {}
+    }
+
+    window.addEventListener('devicemotion', e => {
+      if (!shakeEnabled) return;
+      const a = e.accelerationIncludingGravity;
+      if (!a) return;
+      const magnitude = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
+      const now = Date.now();
+      if (magnitude > 35 && now - lastShake > 1300) {
+        lastShake = now;
+        rollDice();
+      }
+    });
+
+    dieType.onchange = () => { preset.value = 'custom'; prepareScene(); };
+    quantity.onchange = () => { preset.value = 'custom'; prepareScene(); };
+    modifier.oninput = () => updatePoolLabel();
+    preset.onchange = applyPreset;
+    prepareBtn.onclick = async () => { await ensureAudio(); prepareScene(); };
+    rollBtn.onclick = async () => { if (preset.value !== 'custom') applyPreset(); await rollDice(); };
+    soundBtn.onclick = async () => {
+      soundEnabled = !soundEnabled;
+      if (soundEnabled) await ensureAudio();
+      soundBtn.textContent = `Audio: ${soundEnabled ? 'attivo' : 'muto'}`;
+      if (soundEnabled) playDiceClack(0.95);
+    };
+    shakeBtn.onclick = toggleShake;
+    window.addEventListener('pointerdown', () => ensureAudio(), { once:true });
+
+    prepareScene();
+  </script>
+</body>
+</html>
